@@ -51,14 +51,14 @@ test('rejects duplicate registration', async (t) => {
   const port = server.address().port;
 
   await postJson(port, '/register', {
-    name: 'Student Three',
+    name: 'Login Candidate',
     email: 'dup@example.com',
     phone: '+1234567891',
     password: 'S3cur3Pass!',
   });
 
   const duplicate = await postJson(port, '/register', {
-    name: 'Student Two',
+    name: 'Duplicate Candidate',
     email: 'dup@example.com',
     phone: '+1234567891',
     password: 'S3cur3Pass!',
@@ -75,7 +75,7 @@ test('rejects login with invalid password', async (t) => {
   const port = server.address().port;
 
   await postJson(port, '/register', {
-    name: 'Student Two',
+    name: 'Duplicate Candidate',
     email: 'dup@example.com',
     phone: '+1234567891',
     password: 'S3cur3Pass!',
