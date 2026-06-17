@@ -19,6 +19,10 @@ async function postJson(port, path, payload) {
   };
 }
 
+function buildAuthHeader(token) {
+  return ['Bearer', token].join(' ');
+}
+
 test('registers a student and returns a jwt token', async (t) => {
   const server = createServer({ jwtSecret: 'test-secret' });
   await new Promise((resolve) => server.listen(0, resolve));
@@ -39,7 +43,7 @@ test('registers a student and returns a jwt token', async (t) => {
   assert.equal('passwordHash' in result.body.user, false);
 });
 
-test('rejects duplicate registration and invalid login password', async (t) => {
+test('rejects duplicate registration', async (t) => {
   const server = createServer({ jwtSecret: 'test-secret' });
   await new Promise((resolve) => server.listen(0, resolve));
   t.after(() => server.close());
@@ -61,6 +65,21 @@ test('rejects duplicate registration and invalid login password', async (t) => {
   });
 
   assert.equal(duplicate.status, 409);
+});
+
+test('rejects login with invalid password', async (t) => {
+  const server = createServer({ jwtSecret: 'test-secret' });
+  await new Promise((resolve) => server.listen(0, resolve));
+  t.after(() => server.close());
+
+  const port = server.address().port;
+
+  await postJson(port, '/register', {
+    name: 'Student Two',
+    email: 'dup@example.com',
+    phone: '+1234567891',
+    password: 'S3cur3Pass!',
+  });
 
   const login = await postJson(port, '/login', {
     email: 'dup@example.com',
@@ -93,7 +112,7 @@ test('logs in and allows authenticated profile access', async (t) => {
 
   const profileResponse = await fetch(url(port, '/profile'), {
     headers: {
-      Authorization: 'Be' + 'arer ' + login.body.token,
+      Authorization: buildAuthHeader(login.body.token),
     },
   });
 

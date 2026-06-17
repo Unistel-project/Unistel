@@ -2,6 +2,7 @@ const http = require('http');
 const crypto = require('crypto');
 
 const DEFAULT_TOKEN_TTL_SECONDS = 60 * 60;
+const MAX_REQUEST_BODY_BYTES = 1_000_000;
 
 function base64UrlEncode(value) {
   return Buffer.from(value)
@@ -76,9 +77,10 @@ function verifyToken(token, secret) {
   return parsedPayload;
 }
 
-function hashPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
-  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
-  return `${salt}:${hash}`;
+function hashPassword(password, salt) {
+  const resolvedSalt = salt || crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(password, resolvedSalt, 64).toString('hex');
+  return `${resolvedSalt}:${hash}`;
 }
 
 function verifyPassword(password, hashedPassword) {
@@ -87,9 +89,9 @@ function verifyPassword(password, hashedPassword) {
     return false;
   }
 
-  const passwordHash = crypto.scryptSync(password, salt, 64).toString('hex');
+  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
   const storedBuffer = Buffer.from(storedHash, 'hex');
-  const passwordBuffer = Buffer.from(passwordHash, 'hex');
+  const passwordBuffer = Buffer.from(hash, 'hex');
 
   if (storedBuffer.length !== passwordBuffer.length) {
     return false;
@@ -101,29 +103,48 @@ function verifyPassword(password, hashedPassword) {
 function readJsonBody(req) {
   return new Promise((resolve, reject) => {
     let body = '';
+    let finished = false;
 
     req.on('data', (chunk) => {
+      if (finished) {
+        return;
+      }
+
       body += chunk;
-      if (body.length > 1e6) {
+      if (body.length > MAX_REQUEST_BODY_BYTES) {
+        finished = true;
         reject(new Error('Request body too large'));
         req.destroy();
+        return;
       }
     });
 
     req.on('end', () => {
+      if (finished) {
+        return;
+      }
+
       if (!body) {
+        finished = true;
         resolve({});
         return;
       }
 
       try {
+        finished = true;
         resolve(JSON.parse(body));
       } catch {
+        finished = true;
         reject(new Error('Invalid JSON body'));
       }
     });
 
-    req.on('error', reject);
+    req.on('error', (error) => {
+      if (!finished) {
+        finished = true;
+        reject(error);
+      }
+    });
   });
 }
 
@@ -225,7 +246,10 @@ function buildPage() {
 
 function createServer(options = {}) {
   const usersByEmail = new Map();
-  const jwtSecret = options.jwtSecret || process.env.JWT_SECRET || 'change-this-secret';
+  const jwtSecret = options.jwtSecret || process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    throw new Error('JWT secret is required. Set JWT_SECRET or pass jwtSecret in options.');
+  }
   const tokenTtl = options.tokenTtlSeconds || DEFAULT_TOKEN_TTL_SECONDS;
 
   return http.createServer(async (req, res) => {
