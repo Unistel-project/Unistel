@@ -1,0 +1,21 @@
+{
+  "name": "unistel",
+  "version": "1.0.0",
+  "description": "UNISTEL is a web-based Hostel Booking System designed to help students search, compare, and book hostel accommodations online before arriving at campus. The system aims to reduce the challenges students face when looking for suitable hostels, such as long travel distances, traffic congestion, limited information, and delays in securing accommodation.",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test",
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Unistel-project/Unistel.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Unistel-project/Unistel/issues"
+  },
+  "homepage": "https://github.com/Unistel-project/Unistel#readme"
+}
