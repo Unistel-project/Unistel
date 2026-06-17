@@ -114,6 +114,7 @@ function readJsonBody(req) {
       if (body.length > MAX_REQUEST_BODY_BYTES) {
         finished = true;
         reject(new Error('Request body too large'));
+        // Stop reading from the socket immediately once the size limit is exceeded.
         req.destroy();
         return;
       }
